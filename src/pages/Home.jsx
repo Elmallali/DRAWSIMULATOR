@@ -24,9 +24,10 @@ function Home() {
       </div>
 
       {/* Selection Cards */}
-      <div className="grid md:grid-cols-2 gap-8 mb-16">
-        {/* Tactical Board Card */}
-        <div
+      <div className="flex justify-center mb-16">
+        <div className="max-w-md w-full">
+{/* Tactical Board Card */}
+        {/* <div
           onClick={() => navigate('/lineup')}
           className="glass-card glass-card-hover p-8 cursor-pointer group relative overflow-hidden"
         >
@@ -57,7 +58,7 @@ function Home() {
               </span>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Official Draw Card */}
         <div
@@ -92,10 +93,11 @@ function Home() {
             </div>
           </div>
         </div>
+        </div>
       </div>
 
-      {/* Footer */}
-      <footer className="text-center">
+      {/* Reset Data Section */}
+      <div className="text-center">
         <button
           onClick={handleResetData}
           className="glass-card px-6 py-3 inline-flex items-center gap-2 hover:bg-red-500/20 hover:border-red-500/30 transition-all duration-200"
@@ -103,11 +105,7 @@ function Home() {
           <RotateCcw className="w-4 h-4" />
           <span>Reset All Data</span>
         </button>
-        
-        <p className="text-white/50 mt-6">
-          © 2025 World Cup 2026 Draw Simulator. Developed by Rakops solutions.
-        </p>
-      </footer>
+      </div>
     </div>
   )
 }

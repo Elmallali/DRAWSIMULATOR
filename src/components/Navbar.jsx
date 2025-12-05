@@ -29,7 +29,7 @@ function Navbar() {
             <span className="font-medium">Home</span>
           </Link>
           
-          <Link
+{/* <Link
             to="/lineup"
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
               isActive('/lineup')
@@ -39,7 +39,7 @@ function Navbar() {
           >
             <Users className="w-5 h-5" />
             <span className="font-medium">Tactical Board</span>
-          </Link>
+          </Link> */}
           
           <Link
             to="/draw"

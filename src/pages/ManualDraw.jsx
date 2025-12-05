@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DndContext, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core'
 import { useTournamentStore } from '../store/tournamentStore'
 import { POTS, CONFEDERATIONS } from '../utils/drawAlgorithm'
-import { Trophy, AlertCircle, CheckCircle, ChevronRight, RotateCcw } from 'lucide-react'
+import { Trophy, AlertCircle, CheckCircle, ChevronRight, RotateCcw, Smartphone, Hand } from 'lucide-react'
 
 const confederationColors = {
   [CONFEDERATIONS.UEFA]: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -14,7 +14,7 @@ const confederationColors = {
   [CONFEDERATIONS.OFC]: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
 }
 
-function DraggableTeam({ team, isPlaced }) {
+function DraggableTeam({ team, isPlaced, onTeamSelect, isSelected, isMobile }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: team.name,
     data: team,
@@ -27,19 +27,27 @@ function DraggableTeam({ team, isPlaced }) {
       }
     : undefined
 
+  const handleClick = () => {
+    if (isMobile && !isPlaced) {
+      onTeamSelect(team)
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      className={`p-2 rounded-lg border ${
+      {...(isMobile ? {} : { ...listeners, ...attributes })}
+      onClick={handleClick}
+      className={`p-3 rounded-lg border ${
         confederationColors[team.confederation]
       } ${
         isPlaced
           ? 'opacity-30 cursor-not-allowed'
+          : isMobile
+          ? `cursor-pointer hover:scale-105 ${isSelected ? 'ring-2 ring-fifa-gold-400 bg-fifa-gold-500/20' : 'active:scale-95'}`
           : 'cursor-grab active:cursor-grabbing hover:scale-105'
-      } ${isDragging ? 'opacity-50' : ''} transition-all text-sm`}
+      } ${isDragging ? 'opacity-50' : ''} transition-all text-sm min-h-[60px] flex flex-col justify-center`}
     >
       <div className="font-semibold">{team.name}</div>
       <div className="text-xs opacity-70">{team.confederation}</div>
@@ -48,19 +56,35 @@ function DraggableTeam({ team, isPlaced }) {
           HOST
         </div>
       )}
+      {isMobile && isSelected && (
+        <div className="text-xs text-fifa-gold-300 mt-1 flex items-center gap-1">
+          <Hand className="w-3 h-3" />
+          Selected - Tap a group slot
+        </div>
+      )}
     </div>
   )
 }
 
-function GroupSlot({ groupName, position, team, onDrop, validationError }) {
+function GroupSlot({ groupName, position, team, onDrop, validationError, onSlotSelect, isMobile, selectedTeam }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `${groupName}-${position}`,
     data: { groupName, position },
   })
 
+  const handleClick = () => {
+    if (isMobile && selectedTeam && !team) {
+      onSlotSelect(groupName, position)
+    }
+  }
+
+  const canAcceptTeam = selectedTeam && !team
+  const hasValidationError = selectedTeam && validationError
+
   return (
     <div
       ref={setNodeRef}
+      onClick={handleClick}
       className={`p-3 rounded-lg border-2 border-dashed min-h-[80px] transition-all ${
         isOver
           ? validationError
@@ -68,6 +92,10 @@ function GroupSlot({ groupName, position, team, onDrop, validationError }) {
             : 'border-fifa-gold-500 bg-fifa-gold-500/10'
           : team
           ? 'border-white/30 bg-white/5'
+          : isMobile && canAcceptTeam
+          ? hasValidationError
+            ? 'border-red-500/50 bg-red-500/5 cursor-not-allowed'
+            : 'border-fifa-gold-500/50 bg-fifa-gold-500/5 cursor-pointer hover:border-fifa-gold-500 hover:bg-fifa-gold-500/10'
           : 'border-white/20 bg-white/5'
       }`}
     >
@@ -82,13 +110,30 @@ function GroupSlot({ groupName, position, team, onDrop, validationError }) {
           )}
         </div>
       ) : (
-        <div className="text-center text-white/30 text-xs">
-          Position {position + 1}
-          <br />
-          Drop team here
+        <div className="text-center text-white/30 text-xs flex flex-col items-center justify-center h-full">
+          <div className="mb-1">Position {position + 1}</div>
+          {isMobile ? (
+            selectedTeam ? (
+              hasValidationError ? (
+                <div className="text-red-400 text-xs flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Can't place here
+                </div>
+              ) : (
+                <div className="text-fifa-gold-400 text-xs flex items-center gap-1">
+                  <Hand className="w-3 h-3" />
+                  Tap to place
+                </div>
+              )
+            ) : (
+              <span>Select team first</span>
+            )
+          ) : (
+            <span>Drop team here</span>
+          )}
         </div>
       )}
-      {validationError && isOver && (
+      {validationError && (isOver || (isMobile && selectedTeam)) && (
         <div className="text-red-400 text-xs mt-1 flex items-center gap-1">
           <AlertCircle className="w-3 h-3" />
           {validationError}
@@ -126,6 +171,19 @@ function ManualDraw() {
   const [activeTeam, setActiveTeam] = useState(null)
   const [validationError, setValidationError] = useState(null)
   const [currentPot, setCurrentPot] = useState('pot1') // Current pot being placed
+  const [selectedTeam, setSelectedTeam] = useState(null) // For mobile tap-to-select
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Get teams for current pot that haven't been placed yet
   const getCurrentPotTeams = () => {
@@ -240,6 +298,52 @@ function ManualDraw() {
     setValidationError(validation.valid ? null : validation.error)
   }
 
+  // Mobile-specific handlers
+  const handleTeamSelect = (team) => {
+    if (selectedTeam?.name === team.name) {
+      setSelectedTeam(null) // Deselect if clicking same team
+    } else {
+      setSelectedTeam(team)
+      setValidationError(null)
+    }
+  }
+
+  const handleSlotSelect = (groupName, position) => {
+    if (!selectedTeam) return
+
+    // Check if team pot matches position
+    const teamPot = getTeamPot(selectedTeam)
+    const expectedPosition = teamPot === 'pot1' ? 0 : teamPot === 'pot2' ? 1 : teamPot === 'pot3' ? 2 : 3
+    
+    if (position !== expectedPosition) {
+      setValidationError(`${teamPot.replace('pot', 'Pot ')} teams must go in position ${expectedPosition + 1}`)
+      return
+    }
+    
+    const validation = canPlaceTeam(selectedTeam, groupName)
+    
+    if (validation.valid) {
+      setGroups((prev) => {
+        const newGroups = { ...prev }
+        newGroups[groupName] = [...newGroups[groupName]]
+        newGroups[groupName][position] = selectedTeam
+        return newGroups
+      })
+      setSelectedTeam(null)
+      setValidationError(null)
+    } else {
+      setValidationError(validation.error)
+    }
+  }
+
+  // Update validation when team is selected (mobile)
+  useEffect(() => {
+    if (selectedTeam && isMobile) {
+      // Clear previous validation
+      setValidationError(null)
+    }
+  }, [selectedTeam, isMobile])
+
   const handleDragEnd = (event) => {
     const { over } = event
     setValidationError(null)
@@ -334,10 +438,20 @@ function ManualDraw() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-fifa-blue-400 to-fifa-gold-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-fifa-blue-400 to-fifa-gold-400 bg-clip-text text-transparent">
             Manual Draw - Create Your Own Groups
           </h1>
-          <p className="text-white/70">Drag and drop teams into groups (FIFA rules apply)</p>
+          <p className="text-white/70 px-4">
+            {isMobile ? 'Tap teams to select, then tap group slots to place' : 'Drag and drop teams into groups'} (FIFA rules apply)
+          </p>
+          {isMobile && (
+            <div className="mt-4 mx-4 p-3 bg-fifa-blue-500/20 border border-fifa-blue-500/30 rounded-lg">
+              <div className="flex items-center justify-center gap-2 text-fifa-blue-300">
+                <Smartphone className="w-5 h-5" />
+                <span className="text-sm font-medium">Mobile Mode: Tap to select teams, then tap group slots</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Progress */}
@@ -436,13 +550,18 @@ function ManualDraw() {
           </ul>
         </div>
 
-        <div className="grid lg:grid-cols-[300px_1fr] gap-8">
-          {/* Current Pot Teams - Vertical Sidebar */}
+        <div className={`grid gap-8 ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-[300px_1fr]'}`}>
+          {/* Current Pot Teams */}
           <div className="space-y-4">
             <div className="glass-card p-4">
               <h3 className="font-bold mb-3 flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-fifa-gold-400" />
                 {potProgress.potName} Teams
+                {selectedTeam && isMobile && (
+                  <span className="ml-auto text-xs bg-fifa-gold-500/30 text-fifa-gold-300 px-2 py-1 rounded">
+                    {selectedTeam.name} selected
+                  </span>
+                )}
               </h3>
               
               {currentPotTeams.length === 0 ? (
@@ -457,10 +576,25 @@ function ManualDraw() {
                 <div className="space-y-2">
                   <p className="text-sm text-fifa-gold-400 mb-3">
                     {currentPotTeams.length} teams remaining
+                    {isMobile && selectedTeam && (
+                      <button
+                        onClick={() => setSelectedTeam(null)}
+                        className="ml-2 text-xs text-white/70 hover:text-white underline"
+                      >
+                        Clear selection
+                      </button>
+                    )}
                   </p>
-                  <div className="space-y-2">
+                  <div className={`grid gap-2 ${isMobile ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
                     {currentPotTeams.map((team) => (
-                      <DraggableTeam key={team.name} team={team} isPlaced={false} />
+                      <DraggableTeam 
+                        key={team.name} 
+                        team={team} 
+                        isPlaced={false}
+                        onTeamSelect={handleTeamSelect}
+                        isSelected={selectedTeam?.name === team.name}
+                        isMobile={isMobile}
+                      />
                     ))}
                   </div>
                 </div>
@@ -469,29 +603,58 @@ function ManualDraw() {
           </div>
 
         {/* Groups Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Object.entries(groups).map(([groupName, groupTeams]) => (
-            <div key={groupName} className="glass-card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-fifa-blue-500 to-fifa-gold-500 flex items-center justify-center font-bold">
-                  {groupName}
+        <div className={`grid gap-4 ${isMobile ? 'grid-cols-1 sm:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+          {Object.entries(groups).map(([groupName, groupTeams]) => {
+            // Check if this group can accept the selected team
+            const groupValidation = selectedTeam ? canPlaceTeam(selectedTeam, groupName) : { valid: true }
+            
+            return (
+              <div key={groupName} className="glass-card p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-fifa-blue-500 to-fifa-gold-500 flex items-center justify-center font-bold">
+                    {groupName}
+                  </div>
+                  <h3 className="text-lg font-bold">Group {groupName}</h3>
+                  {isMobile && selectedTeam && !groupValidation.valid && (
+                    <AlertCircle className="w-4 h-4 text-red-400 ml-auto" title={groupValidation.error} />
+                  )}
                 </div>
-                <h3 className="text-lg font-bold">Group {groupName}</h3>
-              </div>
 
-              <div className="space-y-2">
-                {groupTeams.map((team, index) => (
-                  <GroupSlot
-                    key={index}
-                    groupName={groupName}
-                    position={index}
-                    team={team}
-                    validationError={validationError}
-                  />
-                ))}
+                <div className="space-y-2">
+                  {groupTeams.map((team, index) => {
+                    // Check position-specific validation for mobile
+                    let positionValidation = { valid: true, error: null }
+                    if (selectedTeam && !team) {
+                      const teamPot = getTeamPot(selectedTeam)
+                      const expectedPosition = teamPot === 'pot1' ? 0 : teamPot === 'pot2' ? 1 : teamPot === 'pot3' ? 2 : 3
+                      
+                      if (index !== expectedPosition) {
+                        positionValidation = {
+                          valid: false,
+                          error: `${teamPot.replace('pot', 'Pot ')} teams must go in position ${expectedPosition + 1}`
+                        }
+                      } else {
+                        positionValidation = canPlaceTeam(selectedTeam, groupName)
+                      }
+                    }
+                    
+                    return (
+                      <GroupSlot
+                        key={index}
+                        groupName={groupName}
+                        position={index}
+                        team={team}
+                        validationError={positionValidation.error}
+                        onSlotSelect={handleSlotSelect}
+                        isMobile={isMobile}
+                        selectedTeam={selectedTeam}
+                      />
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
         </div>
 
