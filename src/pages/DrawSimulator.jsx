@@ -13,6 +13,7 @@ const confederationColors = {
   [CONFEDERATIONS.CAF]: 'bg-green-500/20 text-green-300 border-green-500/30',
   [CONFEDERATIONS.AFC]: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
   [CONFEDERATIONS.OFC]: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  'TBD': 'bg-gray-500/20 text-gray-300 border-gray-500/30',
 }
 
 function DrawSimulator() {

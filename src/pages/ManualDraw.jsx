@@ -12,6 +12,7 @@ const confederationColors = {
   [CONFEDERATIONS.CAF]: 'bg-green-500/20 text-green-300 border-green-500/30',
   [CONFEDERATIONS.AFC]: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
   [CONFEDERATIONS.OFC]: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  'TBD': 'bg-gray-500/20 text-gray-300 border-gray-500/30',
 }
 
 function DraggableTeam({ team, isPlaced, onTeamSelect, isSelected, isMobile }) {
@@ -156,14 +157,14 @@ function ManualDraw() {
       initialGroups[name] = [null, null, null, null]
     })
     
-    // Pre-place hosts according to FIFA rules
+    // Pre-place hosts according to FIFA rules (Official placement)
     const mexico = POTS.pot1.find((t) => t.name === 'Mexico')
-    const usa = POTS.pot1.find((t) => t.name === 'USA')
     const canada = POTS.pot1.find((t) => t.name === 'Canada')
+    const usa = POTS.pot1.find((t) => t.name === 'USA')
     
-    initialGroups['A'][0] = mexico
-    initialGroups['B'][0] = usa
-    initialGroups['D'][0] = canada
+    initialGroups['A'][0] = mexico  // Group A (Green ball)
+    initialGroups['B'][0] = canada  // Group B (Red ball)
+    initialGroups['D'][0] = usa     // Group D (Blue ball)
     
     return initialGroups
   })
@@ -250,6 +251,12 @@ function ManualDraw() {
     
     if (hasSamePotTeam) {
       return { valid: false, error: `Already has a team from ${teamPot}` }
+    }
+
+    // Handle TBD confederation (FIFA play-off winners)
+    if (team.confederation === 'TBD') {
+      // Allow placement for simulation, but add warning
+      return { valid: true, error: null, warning: 'Confederation TBD - rules will apply when determined' }
     }
 
     // Count confederation teams in group
@@ -389,12 +396,12 @@ function ManualDraw() {
       })
       
       const mexico = POTS.pot1.find((t) => t.name === 'Mexico')
-      const usa = POTS.pot1.find((t) => t.name === 'USA')
       const canada = POTS.pot1.find((t) => t.name === 'Canada')
+      const usa = POTS.pot1.find((t) => t.name === 'USA')
       
-      initialGroups['A'][0] = mexico
-      initialGroups['B'][0] = usa
-      initialGroups['D'][0] = canada
+      initialGroups['A'][0] = mexico  // Group A (Green ball)
+      initialGroups['B'][0] = canada  // Group B (Red ball)
+      initialGroups['D'][0] = usa     // Group D (Blue ball)
       
       setGroups(initialGroups)
     }
@@ -529,7 +536,7 @@ function ManualDraw() {
           <ul className="text-sm text-white/70 space-y-2">
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-              <span>Hosts (Mexico, USA, Canada) are pre-placed in Groups A, B, D</span>
+              <span>Hosts are pre-placed: Mexico→Group A, Canada→Group B, USA→Group D</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
@@ -551,8 +558,8 @@ function ManualDraw() {
         </div>
 
         <div className={`grid gap-8 ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-[300px_1fr]'}`}>
-          {/* Current Pot Teams */}
-          <div className="space-y-4">
+          {/* Current Pot Teams - Sticky */}
+          <div className={`space-y-4 ${isMobile ? '' : 'sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto'}`}>
             <div className="glass-card p-4">
               <h3 className="font-bold mb-3 flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-fifa-gold-400" />
